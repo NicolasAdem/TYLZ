@@ -4,6 +4,10 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 First, run the development server:
 
+# Frontend: Next.js (React framework)
+# Backend: express.js
+# ORM: TypeORM, Prisma, (remult)
+
 ```bash
 npm run dev
 # or
