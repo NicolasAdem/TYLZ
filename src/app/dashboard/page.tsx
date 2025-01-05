@@ -26,6 +26,11 @@ interface Project {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+const handleLogout = () => {
+  localStorage.removeItem('token');
+  window.location.replace('../account');
+};
+
 const fetchProjects = async (): Promise<Project[]> => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_URL}/api/projects`, {
@@ -89,6 +94,8 @@ const getPriorityColor = (priority: string): string => {
   }
 };
 
+
+
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showNewProjectModal, setShowNewProjectModal] = useState<boolean>(false);
@@ -104,6 +111,7 @@ export default function DashboardPage() {
     }
     loadProjects();
   }, []);
+
   
   const loadProjects = async (): Promise<void> => {
     try {
@@ -174,6 +182,14 @@ export default function DashboardPage() {
               </button>
             </div>
           ))}
+            <div className="absolute bottom-0 w-full border-t border-gray-200 p-4">
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
         </nav>
       </aside>
 
