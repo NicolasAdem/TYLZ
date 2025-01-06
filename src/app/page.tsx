@@ -1,131 +1,782 @@
-import React from 'react';
-import Footer from './components/Footer';
-import Nav from './components/Navigation';
+'use client'
 
-export default function Home() {
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useScroll, useSpring, useMotionValue, useTransform } from 'framer-motion';
+import { 
+  MessageSquare, 
+  Brain, 
+  Rocket, 
+  BarChart,
+  X,
+  Menu, 
+  Shield, 
+  Globe,
+  Check, 
+  Star,
+  ArrowRight,
+  Play
+} from 'lucide-react';
+
+// Spotlight Component
+const MouseSpotlight: React.FC = () => {
+  const [mousePosition, setMousePosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <Nav></Nav>
-      <main className="pt-24">
-        <section className="container mx-auto px-6 py-16">
+    <div 
+      className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
+      style={{
+        background: `radial-gradient(100px at ${mousePosition.x}px ${mousePosition.y}px, rgba(29, 78, 216, 0.15), transparent 99.9%)`
+      }}
+    />
+  );
+};
+
+
+// Enhanced Tracing Beam
+const TracingBeam = () => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start start', 'end end']
+  });
+
+  const springConfig = { stiffness: 100, damping: 30, restDelta: 0.001 };
+  const x = useSpring(scrollYProgress, springConfig);
+  
+  return (
+    <>
+      <motion.div
+        ref={ref}
+        className="fixed left-8 top-0 w-1 h-full bg-gradient-to-b from-blue-600 to-purple-600 origin-top"
+        style={{ scaleY: x }}
+      />
+      <motion.div
+        className="fixed left-8 w-4 h-4 rounded-full bg-blue-600 -ml-1.5"
+        style={{ top: useTransform(x, (v) => `calc(${v * 100}% - 8px)`) }}
+      />
+    </>
+  );
+};
+
+const Home = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <MouseSpotlight />
+      <TracingBeam />
+  {/* Navigation */}
+  <nav 
+        className={`fixed w-full z-50 transition-all duration-300 ${
+          isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'
+        }`}
+      >
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <motion.div
+                whileHover={{ rotate: 180 }}
+                transition={{ duration: 0.3 }}
+                className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg"
+              />
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Tylz.AI
+              </span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex gap-8">
+              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
+              <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
+              <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+              <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition-colors">Testimonials</a>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Login
+              </motion.button>
+
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="hidden md:block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg shadow-blue-200"
+              >
+                Get Started
+              </motion.button>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu */}
+          <motion.div
+            initial={false}
+            animate={{ height: isMobileMenuOpen ? 'auto' : 0 }}
+            className="md:hidden overflow-hidden"
+          >
+            <div className="py-4 space-y-4">
+              <a href="#features" className="block text-gray-600 hover:text-gray-900 transition-colors">Features</a>
+              <a href="#how-it-works" className="block text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
+              <a href="#pricing" className="block text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+              <a href="#testimonials" className="block text-gray-600 hover:text-gray-900 transition-colors">Testimonials</a>
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg shadow-blue-200"
+              >
+                Get Started
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-16 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <motion.div
+            initial={{ opacity: 0.5 }}
+            animate={{ 
+              opacity: [0.4, 0.6, 0.4],
+              scale: [1, 1.1, 1],
+              x: [0, 20, 0],
+              y: [0, -30, 0]
+            }}
+            transition={{ 
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          />
+          <motion.div
+            initial={{ opacity: 0.5 }}
+            animate={{ 
+              opacity: [0.4, 0.6, 0.4],
+              scale: [1, 1.2, 1],
+              x: [0, -20, 0],
+              y: [0, 20, 0]
+            }}
+            transition={{ 
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1
+            }}
+            className="absolute top-0 right-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          />
+        </div>
+        <div className="container mx-auto px-6 relative">
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="md:w-1/2">
-              <h1 className="text-5xl font-bold leading-tight mb-6 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                From Conversations to Actions
-              </h1>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Transform your team's communication into structured, actionable workflows with AI-powered project management.
-              </p>
-              <div className="flex gap-4 flex-wrap">
-                <a href="/account" className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg">
-                  Get Started Free
-                </a>
-                <a href="/account">
-                <button className="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-full hover:bg-blue-50 transition-colors">
-                  Watch Demo
-                </button>
-                </a>
-              </div>
-            </div>
-            <div className="md:w-1/2">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl opacity-30 blur-xl"></div>
-                <img src="https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="AI-driven workflows" className="relative rounded-xl shadow-xl"/>
-              </div>
-            </div>
-          </div>
-        </section>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                {/* Enhanced Tag Badge */}
+                <motion.div 
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 mb-8"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse delay-75" />
+                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse delay-150" />
+                  </div>
+                  <span className="text-sm text-blue-600 font-medium">
+                    New: AI-Powered Automation
+                  </span>
+                </motion.div>
+                
+                <h1 className="text-6xl font-bold leading-tight mb-6">
+                  <motion.span 
+                    className="block bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent bg-[length:200%_auto]"
+                    animate={{ 
+                      backgroundPosition: ['0%', '200%'],
+                    }}
+                    transition={{ 
+                      duration: 20,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    From Conversations
+                  </motion.span>
+                  <motion.span 
+                    className="text-gray-900"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    to Actions
+                  </motion.span>
+                </h1>
 
-        <section id="features" className="py-24 bg-white">
-          <div className="container mx-auto px-6">
-            <div className="grid md:grid-cols-3 gap-12">
-              {[
-                {
-                  title: "Chat-to-Task Conversion",
-                  description: "Turn conversations into structured tasks effortlessly",
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-                  )
-                },
-                {
-                  title: "Proactive Suggestions",
-                  description: "AI-powered task optimization and risk mitigation",
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                  )
-                },
-                {
-                  title: "Seamless Integrations",
-                  description: "Compatible with Slack, Teams, and email",
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                  )
-                }
-              ].map((feature, index) => (
-              <div key={index} className="p-6 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors group">
-                <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mb-6 group-hover:bg-blue-200 transition-colors">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {feature.icon}
-                  </svg>
+                <motion.p 
+                  className="text-xl text-gray-600 mb-8 leading-relaxed"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  Harness the power of AI to transform your team's communication into
+                  structured, actionable workflows.
+                  <br />
+                  <motion.span 
+                    className="font-medium text-gray-900 relative inline-block"
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    Where your team meets GPT-driven insights.
+                    <motion.span 
+                      className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8 }}
+                    />
+                  </motion.span>
+                </motion.p>
+
+                <div className="flex gap-4 flex-wrap">
+                  <motion.button
+                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200/50 flex items-center gap-2"
+                  >
+                    Get Started Free
+                    <motion.span
+                      animate={{ x: [0, 4, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <ArrowRight className="w-5 h-5" />
+                    </motion.span>
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-full hover:bg-blue-50 transition-colors flex items-center gap-2"
+                  >
+                    Watch Demo
+                    <Play className="w-5 h-5" />
+                  </motion.button>
                 </div>
-                <h3 className="text-xl font-semibold mb-4 text-black">{feature.title}</h3>
-                <p className="text-black">{feature.description}</p>
-              </div>
-              ))}
+
+                {/* Stats Section */}
+                <div className="mt-12 grid grid-cols-3 gap-8">
+                  {[
+                    { label: "Active Users", value: "10K+" },
+                    { label: "Tasks Automated", value: "1M+" },
+                    { label: "Time Saved", value: "1000h+" }
+                  ].map((stat, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.8 + index * 0.1 }}
+                      className="text-center"
+                    >
+                      <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                      <div className="text-sm text-gray-600">{stat.label}</div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+            {/* Right Side of Hero */}
+            <div className="md:w-1/2">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+                className="relative"
+              >
+                {/* Enhanced Glow Effect */}
+                <div className="absolute -inset-4 bg-gradient-to-r from-blue-200 to-purple-200 rounded-xl opacity-30 blur-xl animate-pulse" />
+                
+                {/* Main Content Window */}
+                <div className="relative bg-white rounded-xl shadow-2xl p-2">
+                  {/* Window Header */}
+                  <div className="flex items-center gap-2 p-3 border-b border-gray-100">
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-red-500" />
+                      <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                    </div>
+                  </div>
+                  
+                  <img
+                    src="/api/placeholder/800/600"
+                    alt="AI-driven workflows"
+                    className="rounded-lg"
+                  />
+                  
+                  {/* Floating Cards */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20, x: 20 }}
+                    animate={{ opacity: 1, y: 0, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="absolute -right-8 top-8 bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:shadow-xl transition-shadow"
+                    whileHover={{ scale: 1.05, rotate: 2 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Brain className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">AI Analysis</div>
+                        <div className="text-xs text-gray-500">
+                          <motion.span
+                            animate={{ opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            Processing...
+                          </motion.span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, x: -20 }}
+                    animate={{ opacity: 1, y: 0, x: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="absolute -left-8 bottom-8 bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:shadow-xl transition-shadow"
+                    whileHover={{ scale: 1.05, rotate: -2 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                        <Rocket className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Task Created</div>
+                        <div className="text-xs text-gray-500">Just now</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="py-24 bg-gradient-to-br from-blue-600 to-blue-800">
-          <div className="container mx-auto px-6">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="text-white">
-                <h2 className="text-3xl font-bold mb-6">Real-Time Analytics</h2>
-                <p className="text-xl mb-8 text-blue-100">
-                  Track your team's performance with advanced analytics. Get insights into productivity, collaboration patterns, and project progress.
-                </p>
-                <ul className="space-y-4">
-                  {[
-                    "Team velocity metrics",
-                    "Task completion rates",
-                    "Collaboration insights",
-                    "Resource allocation",
-                    "Predictive analytics"
-                  ].map((item, index) => (
-                    <li key={index} className="flex items-center gap-3">
-                      <svg className="w-5 h-5 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {item}
+      {/* Features Grid */}
+      <section className="py-24 bg-white" id="features">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl font-bold text-gray-900 mb-4"
+            >
+              Powerful Features
+            </motion.h2>
+            <p className="text-xl text-gray-600">
+              Everything you need to streamline your team's workflow
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <MessageSquare className="w-6 h-6 text-blue-600" />,
+                title: "Smart Conversations",
+                description: "AI-powered chat analysis and task extraction with real-time insights and contextual understanding.",
+                demo: "Transform meeting notes into actionable items"
+              },
+              {
+                icon: <Brain className="w-6 h-6 text-purple-600" />,
+                title: "Automated Workflows",
+                description: "Convert discussions into actionable tasks instantly with intelligent prioritization and assignment.",
+                demo: "Auto-assign tasks based on expertise"
+              },
+              {
+                icon: <BarChart className="w-6 h-6 text-blue-600" />,
+                title: "Real-time Analytics",
+                description: "Track performance and identify patterns with advanced metrics and customizable dashboards.",
+                demo: "Monitor team productivity trends"
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group relative"
+              >
+                <div className="p-8 rounded-2xl bg-gray-50 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-xl">
+                  <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 mb-4">{feature.description}</p>
+                  
+                  {/* Feature Demo Preview */}
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <span>{feature.demo}</span>
+                    <motion.div
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* How it Works Section */}
+      <section className="py-24 bg-gray-50 relative overflow-hidden">
+        <div className="container mx-auto px-6 relative">
+          <div className="text-center mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                How It Works
+              </h2>
+              <p className="text-xl text-gray-600">
+                Transform conversations into actionable workflows in three simple steps
+              </p>
+            </motion.div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Connection Lines */}
+            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2" />
+            
+            {[
+              {
+                icon: <MessageSquare className="w-8 h-8 text-blue-600" />,
+                title: "1. Connect Your Conversations",
+                description: "Integrate with your team's chat platforms and meetings"
+              },
+              {
+                icon: <Brain className="w-8 h-8 text-purple-600" />,
+                title: "2. AI Processing",
+                description: "Our AI analyzes conversations and extracts actionable items"
+              },
+              {
+                icon: <Rocket className="w-8 h-8 text-blue-600" />,
+                title: "3. Automated Workflows",
+                description: "Tasks are automatically created and assigned to team members"
+              }
+            ].map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.2 }}
+                className="relative z-10"
+              >
+                <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+                  <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center mb-6">
+                    {step.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-600">
+                    {step.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 bg-white relative overflow-hidden">
+        <div className="container mx-auto px-6 relative">
+          <div className="text-center mb-16">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl font-bold text-gray-900 mb-4"
+            >
+              Simple, Transparent Pricing
+            </motion.h2>
+            <p className="text-xl text-gray-600">Choose the perfect plan for your team</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                name: 'Starter',
+                price: '$29',
+                features: ['5 Team Members', 'Basic AI Analysis', '100 Tasks/month', 'Email Support'],
+                highlighted: false
+              },
+              {
+                name: 'Professional',
+                price: '$99',
+                features: ['Unlimited Team Members', 'Advanced AI Analysis', 'Unlimited Tasks', '24/7 Priority Support', 'Custom Workflows', 'API Access'],
+                highlighted: true
+              },
+              {
+                name: 'Enterprise',
+                price: 'Custom',
+                features: ['Everything in Pro', 'Dedicated Account Manager', 'Custom Integration', 'SLA Guarantee', 'Advanced Analytics'],
+                highlighted: false
+              }
+            ].map((plan, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.2 }}
+                className={`rounded-2xl p-8 ${
+                  plan.highlighted
+                    ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-xl scale-105'
+                    : 'bg-white border-2 border-gray-100'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className={`text-2xl font-bold mb-2 ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>
+                      {plan.name}
+                    </h3>
+                    <div className="flex items-end gap-2">
+                      <span className="text-4xl font-bold">{plan.price}</span>
+                      {plan.price !== 'Custom' && <span className="text-lg mb-1">/month</span>}
+                    </div>
+                  </div>
+                  {plan.highlighted && (
+                    <span className="px-3 py-1 text-sm bg-white/20 rounded-full">Popular</span>
+                  )}
+                </div>
+
+                <ul className="space-y-4 mb-8">
+                  {plan.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center gap-3">
+                      <Check className={`w-5 h-5 ${plan.highlighted ? 'text-white' : 'text-blue-600'}`} />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-              <div className="relative">
-                <div className="absolute -inset-4 bg-white/10 rounded-xl blur-xl"></div>
-                <img src="https://images.pexels.com/photos/106344/pexels-photo-106344.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="Analytics Dashboard" className="relative rounded-xl shadow-2xl" />
-              </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                    plan.highlighted
+                      ? 'bg-white text-blue-600 hover:bg-gray-50'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  Get Started
+                </motion.button>
+              </motion.div>
+            ))}
+          </div>
+          {/* Feature Comparison Table */}
+          <div className="mt-16 bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="px-6 py-4 bg-gray-50 border-b">
+              <h3 className="text-xl font-semibold text-gray-900">Feature Comparison</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Feature</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Starter</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-blue-600">Professional</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { feature: "Team Members", starter: "5", pro: "Unlimited", enterprise: "Unlimited" },
+                    { feature: "AI Analysis", starter: "Basic", pro: "Advanced", enterprise: "Custom" },
+                    { feature: "API Access", starter: "−", pro: "✓", enterprise: "✓" },
+                    { feature: "Custom Integration", starter: "−", pro: "✓", enterprise: "✓" },
+                    { feature: "Analytics", starter: "Basic", pro: "Advanced", enterprise: "Custom" },
+                    { feature: "Support", starter: "Email", pro: "24/7", enterprise: "Dedicated" }
+                  ].map((row, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="px-6 py-4 text-sm text-gray-900">{row.feature}</td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-600">{row.starter}</td>
+                      <td className="px-6 py-4 text-center text-sm text-blue-600 font-medium">{row.pro}</td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-600">{row.enterprise}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="py-24 bg-white">
-          <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-6 text-black">Ready to Get Started?</h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Join thousands of teams already using Tylz.AI to streamline their workflows
-            </p>
-            <a href="/account" className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg text-lg inline-flex items-center gap-2">
-              Start Free Trial
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </a>
+      {/* Testimonials Section */}
+      <section id="testimonials" className="py-24 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Loved by Teams Worldwide
+              </h2>
+              <p className="text-xl text-gray-600">
+                See what our customers have to say
+              </p>
+            </motion.div>
           </div>
-        </section>
-      </main>
 
-    <Footer></Footer>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Sarah Johnson',
+                role: 'Product Manager at TechCorp',
+                image: '/api/placeholder/64/64',
+                content: 'Tylz.AI has transformed how our team collaborates. The AI-powered task extraction has saved us countless hours in meetings.',
+                rating: 5
+              },
+              {
+                name: 'Michael Chen',
+                role: 'CTO at StartupX',
+                image: '/api/placeholder/64/64',
+                content: 'The automated workflow creation is a game-changer. Our productivity has increased by 40% since implementing Tylz.AI.',
+                rating: 5
+              },
+              {
+                name: 'Emily Davis',
+                role: 'Team Lead at InnovateCo',
+                image: '/api/placeholder/64/64',
+                content: 'Finally, an AI tool that actually delivers on its promises. The real-time analytics have helped us optimize our processes significantly.',
+                rating: 5
+              }
+            ].map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.2 }}
+                className="group relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative bg-white rounded-2xl p-8 shadow-lg group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-300">
+                  <div className="flex items-center gap-4 mb-6">
+                    <img
+                      src={testimonial.image}
+                      alt={testimonial.name}
+                      className="w-16 h-16 rounded-full object-cover ring-4 ring-white"
+                    />
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
+                      <p className="text-sm text-gray-600">{testimonial.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-gray-600 leading-relaxed">
+                    "{testimonial.content}"
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* Call-to-Action Section */}
+      <section className="py-24 bg-gradient-to-br from-blue-600 to-purple-600 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-black opacity-10" />
+          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
+        </div>
+        
+        <div className="container mx-auto px-6 relative">
+          <div className="max-w-3xl mx-auto text-center text-white">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-4xl font-bold mb-6">
+                Ready to Transform Your Team's Workflow?
+              </h2>
+              <p className="text-xl mb-8 opacity-90">
+                Join thousands of teams already using Tylz.AI to streamline their operations
+                and boost productivity.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-4 bg-white text-blue-600 rounded-full font-medium hover:bg-gray-100 transition-colors shadow-lg"
+                >
+                  Start Free Trial
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-medium hover:bg-white/10 transition-colors"
+                >
+                  Schedule Demo
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      
+
+      
     </div>
   );
-}
+};
+
+export default Home;
