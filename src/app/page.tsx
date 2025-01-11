@@ -1,11 +1,9 @@
 import React from 'react';
 import Footer from './components/Footer';
-import Nav from './components/Navigation';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <Nav></Nav>
       <main className="pt-24">
         <section className="container mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row items-center gap-12">

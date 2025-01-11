@@ -1,9 +1,8 @@
 "use client";
 
+import SuccessAnimation from '../components/SuccessAnimation';
 import React, { useState } from 'react';
 import Footer from '../components/Footer';
-import Nav from '../components/Navigation';
-
 
 export default function Auth() {
 
@@ -35,9 +34,9 @@ export default function Auth() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Something went wrong');
       
-      setSuccessMessage('Success! Redirecting...');
+      setSuccessMessage('success');
       localStorage.setItem('token', result.token);
-      setTimeout(() => window.location.href = '/dashboard', 1500);
+      setTimeout(() => window.location.href = '/dashboard', 2000);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -47,7 +46,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav></Nav>
       <main className="pt-20 min-h-screen flex items-center justify-center px-4">
         <div className="max-w-md w-full">
           <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -168,11 +166,11 @@ export default function Auth() {
               </div>
             )}
 
-            {successMessage && (
-              <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-lg">
-                {successMessage}
-              </div>
-            )}
+              {successMessage && (
+                <div className="mt-4">
+                  <SuccessAnimation isLogin={isLogin} />
+                </div>
+              )}
 
             {errorMessage && (
               <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-lg">

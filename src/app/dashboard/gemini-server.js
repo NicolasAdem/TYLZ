@@ -39,59 +39,167 @@ const projectSchema = new mongoose.Schema({
   },
   title: String,
   description: String,
+  project_size: String,
   tasks: [{
     title: String,
     description: String,
-    duration_days: Number,
+    duration: {
+      value: Number,
+      unit: String  // "minutes", "hours", "days"
+    },
     assigned_to: String,
     dependencies: [String],
     priority: String,
-    status: String
+    status: String,
+    category: String,
+    complexity: String,
+    subtasks: [{
+      description: String,
+      duration: {
+        value: Number,
+        unit: String
+      }
+    }]
   }],
-  deadline_days: Number,
+  total_duration: {
+    minutes: Number,
+    hours: Number,
+    days: Number
+  },
+  recommended_team_size: Number,
   created_at: { type: Date, default: Date.now },
   status: String
 });
 
 const Project = mongoose.model('Project', projectSchema);
 
+// Add this function to your backend code
+const validateAndFormatTaskPriority = (priority) => {
+  const validPriorities = ['critical', 'high', 'medium', 'low', 'very low'];
+  const normalizedPriority = priority.toLowerCase();
+  return validPriorities.includes(normalizedPriority) ? normalizedPriority : 'medium';
+};
+
+const formatAIResponse = (aiResponse) => {
+  try {
+    let data = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
+    
+    // Ensure all required fields exist
+    const formattedData = {
+      title: data.title || 'Untitled Project',
+      description: data.description || '',
+      deadline_days: data.deadline_days || 7,
+      status: 'active',
+      tasks: Array.isArray(data.tasks) ? data.tasks : []
+    };
+
+    // Format and validate each task
+    formattedData.tasks = formattedData.tasks.map(task => ({
+      title: task.title || 'Untitled Task',
+      description: task.description || '',
+      duration: {
+        value: task.duration?.value || 1,
+        unit: ['minutes', 'hours', 'days', 'weeks', 'months', 'years'].includes(task.duration?.unit) 
+          ? task.duration.unit 
+          : 'days'
+      },
+      assigned_to: task.assigned_to || 'Unassigned',
+      dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
+      priority: validateAndFormatTaskPriority(task.priority || 'medium'),
+      status: task.status || 'pending',
+      parallel_possible: Boolean(task.parallel_possible)
+    }));
+
+    // Sort tasks by priority
+    const priorityOrder = {
+      'critical': 0,
+      'high': 1,
+      'medium': 2,
+      'low': 3,
+      'very low': 4
+    };
+
+    formattedData.tasks.sort((a, b) => 
+      priorityOrder[a.priority] - priorityOrder[b.priority]
+    );
+
+    return formattedData;
+  } catch (error) {
+    throw new Error(`Failed to format AI response: ${error.message}`);
+  }
+};
+
 // Gemini AI setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const generateProjectPlan = async (description) => {
+const generateProjectPlan = async (description, deadline) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    const prompt = `You are a project management expert. Create a project plan for: ${description}
+    const prompt = `You are an expert project management consultant. Create a project plan for: ${description}
+    Project deadline: ${deadline.value} ${deadline.unit}
     
-    Respond only with a valid JSON object in this exact format, with no markdown formatting or code blocks:
+    Respond ONLY with a JSON object in this exact format, with no additional text like "JSON object" or explanation:
     {
-      "title": "Brief project title",
-      "description": "${description}",
+      "title": "string",
+      "description": "string",
+      "deadline_days": number,
       "tasks": [
         {
-          "title": "Task name",
-          "description": "Task description",
-          "duration_days": 5,
-          "assigned_to": "Role",
-          "dependencies": [],
-          "priority": "high",
-          "status": "pending"
+          "title": "string",
+          "description": "string",
+          "duration": {
+            "value": number,
+            "unit": "minutes" | "hours" | "days" | "weeks" | "months" | "years"
+          },
+          "assigned_to": "string",
+          "dependencies": ["string"],
+          "priority": "critical" | "high" | "medium" | "low" | "very low",
+          "status": "pending",
+          "parallel_possible": boolean
         }
       ],
-      "deadline_days": 30
+      "status": "active"
     }`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const cleanedResponse = response.text().replace(/```json|```/g, '').trim();
-    const projectPlan = JSON.parse(cleanedResponse);
-    
-    return projectPlan;
+    let cleanedResponse = response.text()
+      // Remove code blocks
+      .replace(/```json|```/g, '')
+      // Remove "JSON" prefix if it exists
+      .replace(/^JSON\s*/, '')
+      // Remove any leading/trailing whitespace
+      .trim();
+
+    // If the response starts with a { character, assume it's JSON
+    if (!cleanedResponse.startsWith('{')) {
+      // Try to find the first { character
+      const jsonStart = cleanedResponse.indexOf('{');
+      if (jsonStart !== -1) {
+        cleanedResponse = cleanedResponse.slice(jsonStart);
+      }
+    }
+
+    // Try to find the last } character
+    const jsonEnd = cleanedResponse.lastIndexOf('}');
+    if (jsonEnd !== -1) {
+      cleanedResponse = cleanedResponse.slice(0, jsonEnd + 1);
+    }
+
+    console.log('Cleaned response:', cleanedResponse); // Debug log
+
+    // Parse and validate the response
+    const formattedResponse = formatAIResponse(cleanedResponse);
+    return formattedResponse;
 
   } catch (error) {
-    console.error('Gemini API error:', error);
-    throw new Error('Failed to generate project plan. Please try again later.');
+    console.error('Full error:', error);
+    if (error.message.includes('Unexpected token')) {
+      console.error('Raw AI response:', error.response);
+      throw new Error('AI response was not in the correct JSON format. Please try again.');
+    }
+    throw new Error('Failed to generate project plan: ' + error.message);
   }
 };
 
@@ -108,16 +216,47 @@ app.get('/api/projects', verifyToken, async (req, res) => {
 
 app.post('/api/generate-plan', verifyToken, async (req, res) => {
   try {
-    const plan = await generateProjectPlan(req.body.description);
-    const project = new Project({
+    console.log('Received request:', req.body);
+
+    if (!req.body.description || !req.body.deadline) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: 'Both description and deadline are required' 
+      });
+    }
+
+    let plan;
+    try {
+      plan = await generateProjectPlan(req.body.description, req.body.deadline);
+    } catch (genError) {
+      console.error('Generation error:', genError);
+      return res.status(500).json({ 
+        error: 'AI Plan Generation Failed',
+        details: genError.message,
+        suggestion: 'Please try again with a different description'
+      });
+    }
+    
+    const projectData = {
       ...plan,
-      userId: req.userId
-    });
+      userId: req.userId,
+      status: 'active',
+      created_at: new Date(),
+      deadline_days: plan.deadline_days || 7
+    };
+
+    const project = new Project(projectData);
     const savedProject = await project.save();
+    
+    console.log('Saved project:', savedProject);
+    
     res.json(savedProject);
   } catch (error) {
-    console.error('Generate plan error:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate project plan' });
+    console.error('API endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Server Error',
+      details: error.message 
+    });
   }
 });
 
