@@ -25,21 +25,6 @@ app.use(cors({
 app.use(express.json());
 app.use('/api/auth', authRouter);
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-  });
-});
-
-
-// Add CORS middleware
-app.use(cors({
-  origin: 'http://localhost:3000', // Your frontend URL
-  credentials: true
-}));
-
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/saas-platform')
   .then(() => console.log('Connected to MongoDB'))
@@ -81,6 +66,15 @@ const projectSchema = new mongoose.Schema({
     hours: Number,
     days: Number
   },
+  deadline_date: { 
+    type: String,
+    required: true
+  },
+  deadline_days: {
+    type: Number,
+    required: true,
+    default: 7
+  },
   recommended_team_size: Number,
   created_at: { type: Date, default: Date.now },
   status: String
@@ -99,11 +93,16 @@ const formatAIResponse = (aiResponse) => {
   try {
     let data = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
     
+    // Calculate deadline_date based on deadline_days
+    const deadlineDate = new Date();
+    deadlineDate.setDate(deadlineDate.getDate() + (data.deadline_days || 7));
+    
     // Ensure all required fields exist
     const formattedData = {
       title: data.title || 'Untitled Project',
       description: data.description || '',
       deadline_days: data.deadline_days || 7,
+      deadline_date: deadlineDate.toISOString(), // Add deadline_date
       status: 'active',
       tasks: Array.isArray(data.tasks) ? data.tasks : []
     };

@@ -15,35 +15,36 @@ const CompletionCelebration = ({ onDeleteProject, show, onKeepProject }) => {
       
       setShowConfetti(true);
       timer = setTimeout(() => setShowMessage(true), 1000);
-
-      // Play victory sound immediately when shown
-      try {
+  
+      // Create and play the sound
+      const playSound = async () => {
         const audio = new Audio('/completedsound.mp3');
-        audio.volume = 0.3; // Slightly lower volume
-        const playPromise = audio.play();
+        audio.volume = 0.3;
         
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log('Audio play failed:', error);
-          });
+        try {
+          // Need to wait for user interaction due to browser policies
+          await audio.play();
+        } catch (error) {
+          console.log('Audio playback failed:', error);
         }
-      } catch (err) {
-        console.log('Audio creation failed:', err);
-      }
+      };
+  
+      playSound();
     }
-
+  
     return () => {
       if (timer) clearTimeout(timer);
       setShowConfetti(false);
       setShowMessage(false);
     };
   }, [show]);
-
+  
   // Increased number of confetti particles significantly
   const confetti = Array.from({ length: 300 }).map((_, i) => ({
     id: i,
-    x: Math.random() * window.innerWidth,
-    y: -50, // Start above the screen
+    // Distribute evenly across the entire window width
+    x: (i / 300) * window.innerWidth,  // This ensures even distribution
+    y: -20, // Start slightly above screen
     rotation: Math.random() * 360,
     size: 6 + Math.random() * 12,
     color: [
@@ -63,6 +64,7 @@ const CompletionCelebration = ({ onDeleteProject, show, onKeepProject }) => {
       '#00FF00'  // Lime
     ][Math.floor(Math.random() * 14)]
   }));
+  
 
   return (
     <AnimatePresence>
@@ -82,12 +84,14 @@ const CompletionCelebration = ({ onDeleteProject, show, onKeepProject }) => {
             key={particle.id}
             initial={{ 
               x: particle.x,
-              y: -50, // Start above the screen
+              y: -50,
               rotate: 0,
-              scale: 0
+              scale: 0,
+              position: 'fixed'
             }}
             animate={{ 
-              y: window.innerHeight + 100, // End below the screen
+              x: particle.x,
+              y: window.innerHeight + 50,  // Ensure it goes beyond bottom of screen
               rotate: particle.rotation * 2,
               scale: 1
             }}
@@ -96,14 +100,15 @@ const CompletionCelebration = ({ onDeleteProject, show, onKeepProject }) => {
               ease: "easeOut",
               delay: Math.random() * 0.7
             }}
-            className="fixed rounded-full"
+            className="absolute rounded-full"
             style={{
               backgroundColor: particle.color,
               width: `${particle.size}px`,
               height: `${particle.size}px`,
               boxShadow: `0 0 10px ${particle.color}40`,
-              left: `${particle.x}px`,
-              top: 0 // Start at top of screen
+              top: 0,
+              left: 0,
+              position: 'fixed'
             }}
           />
         ))}

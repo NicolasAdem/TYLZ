@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, Dispatch, SetStateAction, useMemo} from 'react';
-import { Trash2, Home, Fish, Settings } from 'lucide-react';
+import { useState, useEffect, Dispatch, SetStateAction, useMemo, useCallback } from 'react';
+import { Trash2, Home, Fish, Settings, Pencil } from 'lucide-react';
 import Loader from '../components/Loader';
 import KanbanColumn from '../components/KanBanComponents';
 import Navigation from '../components/Top';
@@ -37,6 +37,7 @@ interface Project {
   description: string;
   tasks: Task[];
   deadline_days: number;
+  deadline_date: string;
   created_at: string;
   status: 'active' | 'completed' | 'archived';
 }
@@ -58,17 +59,23 @@ interface FilterOptions {
 interface Duration {
   value: number;
   unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
+  deadline_date?: string;  // Add this optional property
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const formatTitle = (title: string): string => {
-  return title.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-};
-
 const formatDeadlineDuration = (project: Project): string => {
-  if (!project.deadline_days) return 'No deadline set';
-  return project.deadline_days === 1 ? '1 day' : `${project.deadline_days} days`;
+  if (!project.deadline_date) return 'No deadline set';
+  
+  const deadline = new Date(project.deadline_date);
+  const now = new Date();
+  const diffTime = Math.abs(deadline.getTime() - now.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (deadline < now) {
+    return `Overdue by ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+  }
+  return `${diffDays} day${diffDays !== 1 ? 's' : ''} remaining`;
 };
 
 const getPriorityStyles = (priority: string): { bg: string; border: string; text: string } => {
@@ -106,9 +113,29 @@ const getPriorityStyles = (priority: string): { bg: string; border: string; text
   }
 };
 
-const handleLogout = () => {
-  localStorage.removeItem('token');
-  window.location.replace('../account');
+const calculateDeadlineDate = (value: number, unit: string): Date => {
+  const date = new Date();
+  switch (unit) {
+    case 'minutes':
+      date.setMinutes(date.getMinutes() + value);
+      break;
+    case 'hours':
+      date.setHours(date.getHours() + value);
+      break;
+    case 'days':
+      date.setDate(date.getDate() + value);
+      break;
+    case 'weeks':
+      date.setDate(date.getDate() + (value * 7));
+      break;
+    case 'months':
+      date.setMonth(date.getMonth() + value);
+      break;
+    case 'years':
+      date.setFullYear(date.getFullYear() + value);
+      break;
+  }
+  return date;
 };
 
 const fetchProjects = async (): Promise<Project[]> => {
@@ -178,6 +205,25 @@ const getMaxValueForUnit = (unit: string): number => {
   return maxValues[unit] || 999;
 };
 
+const useSound = (soundPath: string) => {
+  const [audio] = useState<HTMLAudioElement>(() => {
+    if (typeof window !== 'undefined') {
+      return new Audio(soundPath);
+    }
+    // Return a dummy audio element for SSR
+    return new Audio();
+  });
+
+  const play = useCallback(() => {
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.log('Error playing sound:', e));
+    }
+  }, [audio]);
+
+  return play;
+};
+
 const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ 
   projects, 
   selectedProjectId, 
@@ -185,7 +231,8 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   handleDeleteProject,
   setProjects
 }) => {
-  // Rest of the component stays the same
+  const playMoveSound = useSound('/tilemove.mp3');
+  const playDoneSound = useSound('/tiledone.mp3'); // Add this line
   const [draggedTask, setDraggedTask] = useState<{task: Task, status: string} | null>(null);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
 
@@ -218,6 +265,13 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
       const data = JSON.parse(dragData);
       
       if (!data || !data.taskId) return;
+      
+      // Play different sounds based on the drop status
+      if (dropStatus === 'completed') {
+        playDoneSound();
+      } else {
+        playMoveSound();
+      }
       
       const updatedProjects = projects.map(project => {
         if (project._id === projectId) {
@@ -321,6 +375,8 @@ export default function DashboardPage(): React.ReactElement {
   const [deadline, setDeadline] = useState<Duration>({ value: 1, unit: 'weeks' });
   const [newProjectDescription, setNewProjectDescription] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
+  const [newProjectTitle, setNewProjectTitle] = useState<string>('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     status: ['all'],
     sortBy: 'date',
@@ -412,29 +468,66 @@ export default function DashboardPage(): React.ReactElement {
     }));
   };
 
-  const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      if (!newProjectDescription.trim()) {
-        throw new Error('Please enter a project description');
-      }
-      
-      const newProject = await createProject(newProjectDescription, deadline);
-      setProjects(prev => [newProject, ...prev]);
-      setShowNewProjectModal(false);
-      setNewProjectDescription('');
-      setDeadline({ value: 1, unit: 'weeks' });
-    } catch (err) {
-      console.error('Create project error:', err);
-      setError(`Error: ${err instanceof Error ? err.message : 'Failed to create project. Please try again.'}`);
-    } finally {
-      setIsLoading(false);
+const handleRenameProject = async (projectId: string, newTitle: string) => {
+  try {
+    // Validate the new title
+    if (!newTitle.trim()) {
+      throw new Error('Project title cannot be empty');
     }
-  };
+
+    // Update the projects array
+    const updatedProjects = projects.map(project => 
+      project._id === projectId 
+        ? { ...project, title: newTitle.trim() }
+        : project
+    );
+    
+    setProjects(updatedProjects);
+    setRenamingProjectId(null);
+    setNewProjectTitle('');
+    
+    // You would also want to update this on your backend
+    // Add API call here if needed
+  } catch (err) {
+    setError('Failed to rename project. Please try again.');
+    console.error('Rename error:', err);
+  }
+};
+
+
+const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError(null);
   
+  try {
+    if (!newProjectDescription.trim()) {
+      throw new Error('Please enter a project description');
+    }
+    
+    const deadlineDate = calculateDeadlineDate(deadline.value, deadline.unit);
+    const newProject = await createProject(newProjectDescription, {
+      ...deadline,
+      deadline_date: deadlineDate.toISOString()
+    });
+    
+    // Update the projects array with the complete project data
+    setProjects(prev => [{
+      ...newProject,
+      deadline_date: deadlineDate.toISOString() // Ensure deadline_date is set
+    }, ...prev]);
+    
+    setShowNewProjectModal(false);
+    setNewProjectDescription('');
+    setDeadline({ value: 1, unit: 'weeks' });
+  } catch (err) {
+    console.error('Create project error:', err);
+    setError(`Error: ${err instanceof Error ? err.message : 'Failed to create project. Please try again.'}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+    
     const handleDeleteProject = async (id: string): Promise<void> => {
       try {
         await deleteProject(id);
@@ -473,32 +566,82 @@ export default function DashboardPage(): React.ReactElement {
             <div className="px-4 mt-4 mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
               Projects
             </div>
-            
             {projects.map((project) => (
-              <div
-              key={project._id}
-              onClick={() => setSelectedProjectId(project._id)}
-              className={`flex items-center justify-between px-4 py-2 mx-4 mr-6 rounded cursor-pointer 
-                transition-colors duration-200 ease-in-out
-                hover:bg-gray-100 dark:hover:bg-gray-700 group
-                ${selectedProjectId === project._id ? 'bg-blue-50 dark:bg-blue-900' : ''}`}
-            >
-              <div className="flex items-center flex-1 overflow-hidden">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProject(project._id);
-                  }}
-                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded mr-2 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500" />
-                </button>
-                <span className="text-sm text-gray-700 dark:text-gray-300 truncate pr-2">
-                  {project.title}
-                </span>
-              </div>
-            </div>
-            ))}
+  <div
+    key={project._id}
+    onClick={() => setSelectedProjectId(project._id)}
+    className={`flex flex-col px-4 py-3 mx-4 mr-6 rounded cursor-pointer 
+      transition-colors duration-200 ease-in-out group
+      ${selectedProjectId === project._id 
+        ? 'bg-gray-100 dark:bg-gray-700' 
+        : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+  >
+    <div className="flex items-center flex-1 overflow-hidden">
+      {/* Permanent trash icon on the left */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteProject(project._id);
+        }}
+        className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors mr-3"
+      >
+        <Trash2 className="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500" />
+      </button>
+      
+      {renamingProjectId === project._id ? (
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleRenameProject(project._id, newProjectTitle);
+          }}
+          className="flex-1 flex items-center"
+          onClick={e => e.stopPropagation()}
+        >
+          <input
+            type="text"
+            value={newProjectTitle}
+            onChange={(e) => setNewProjectTitle(e.target.value)}
+            placeholder={project.title}
+            className="w-full px-2 py-1 text-sm text-gray-500 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            autoFocus
+            onBlur={() => {
+              if (newProjectTitle.trim()) {
+                handleRenameProject(project._id, newProjectTitle);
+              } else {
+                setRenamingProjectId(null);
+                setNewProjectTitle('');
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setRenamingProjectId(null);
+                setNewProjectTitle('');
+              }
+            }}
+          />
+        </form>
+      ) : (
+        <div className="flex-1 relative">
+          <span className="text-sm text-gray-700 dark:text-gray-300 truncate block pr-8">
+            {project.title}
+          </span>
+          {/* Pencil icon positioned absolutely over the fading text area */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setRenamingProjectId(project._id);
+              setNewProjectTitle(project.title);
+            }}
+            className="absolute right-8 top-1/2 -translate-y-1/2 p-1 bg-white dark:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          >
+            <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+))}
           </nav>
         </aside>
   

@@ -138,7 +138,7 @@ export const Hero = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
             >
-            <span className="block">Transform</span>
+            <span className="block text-gray-800">Transform</span>
             <RotatingText />
              <span className="block text-gray-500">into Actionable Progress</span>
             </motion.h1>

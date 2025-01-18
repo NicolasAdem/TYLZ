@@ -23,12 +23,13 @@ export interface Task {
   }[];
 }
 
-export interface Project {
+interface Project {
   _id: string;
   title: string;
   description: string;
   tasks: Task[];
   deadline_days: number;
+  deadline_date: string;
   created_at: string;
   status: 'active' | 'completed' | 'archived';
 }

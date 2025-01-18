@@ -7,12 +7,12 @@ import type { TeamMember } from './types';
 const team: TeamMember[] = [
   {
     name: 'Jillian Dubbeling',
-    role: 'CEO',
+    role: 'Founder',
     imageUrl: '/api/placeholder/400/400'
   },
   {
     name: 'Nicolas Adem',
-    role: 'CTO',
+    role: 'Founder',
     imageUrl: '/api/placeholder/400/400'
   }
 ];
