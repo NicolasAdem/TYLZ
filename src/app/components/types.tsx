@@ -94,3 +94,52 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     </div>
   );
 };
+
+export interface Feature {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  demo: string;
+}
+
+export interface PricingPlan {
+  name: string;
+  price: string;
+  features: string[];
+  highlighted: boolean;
+}
+
+export interface Testimonial {
+  name: string;
+  role: string;
+  image: string;
+  content: string;
+  rating: number;
+}
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  imageUrl: string;
+}
+
+export interface FooterColumn {
+  title: string;
+  links: string[];
+}
+
+export interface ResetPasswordFormData {
+  email: string;
+  code: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ApiResponse {
+  message?: string;
+  error?: string;
+}
+
+export interface FormEvent extends React.FormEvent<HTMLFormElement> {
+  currentTarget: HTMLFormElement;
+}

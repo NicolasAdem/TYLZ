@@ -25,6 +25,21 @@ app.use(cors({
 app.use(express.json());
 app.use('/api/auth', authRouter);
 
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+
+// Add CORS middleware
+app.use(cors({
+  origin: 'http://localhost:3000', // Your frontend URL
+  credentials: true
+}));
+
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/saas-platform')
   .then(() => console.log('Connected to MongoDB'))
