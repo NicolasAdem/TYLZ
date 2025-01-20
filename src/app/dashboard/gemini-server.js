@@ -30,46 +30,75 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/saas-plat
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Project Schema
+app.put('/api/projects/:id/tasks', verifyToken, async (req, res) => {
+  try {
+    const { taskTitle, newStatus } = req.body;
+    const project = await Project.findOne({ 
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Update the task status
+    project.tasks = project.tasks.map(task => 
+      task.title === taskTitle
+        ? { ...task, status: newStatus }
+        : task
+    );
+
+    await project.save();
+    res.json(project);
+  } catch (error) {
+    console.error('Update task error:', error);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+const taskSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  duration: {
+    value: Number,
+    unit: String
+  },
+  assigned_to: String,
+  dependencies: [String],
+  priority: String,
+  status: String,
+  category: String,
+  complexity: String,
+  position: Number, // Add position field for ordering
+  subtasks: [{
+    description: String,
+    duration: {
+      value: Number,
+      unit: String
+    }
+  }]
+});
+
 const projectSchema = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'User'
   },
-  title: String,
+  title: {
+    type: String,
+    required: true
+  },
   description: String,
   project_size: String,
-  tasks: [{
-    title: String,
-    description: String,
-    duration: {
-      value: Number,
-      unit: String  // "minutes", "hours", "days"
-    },
-    assigned_to: String,
-    dependencies: [String],
-    priority: String,
-    status: String,
-    category: String,
-    complexity: String,
-    subtasks: [{
-      description: String,
-      duration: {
-        value: Number,
-        unit: String
-      }
-    }]
-  }],
+  tasks: [taskSchema],
   total_duration: {
     minutes: Number,
     hours: Number,
     days: Number
   },
-  deadline_date: { 
-    type: String,
-    required: true
-  },
+  deadline_date: String,
   deadline_days: {
     type: Number,
     required: true,
@@ -81,6 +110,93 @@ const projectSchema = new mongoose.Schema({
 });
 
 const Project = mongoose.model('Project', projectSchema);
+
+
+// Updated route handler for task updates
+app.put('/api/projects/:id/tasks', verifyToken, async (req, res) => {
+  try {
+    const { taskTitle, newStatus, newPosition } = req.body;
+    
+    // Find project and verify ownership
+    const project = await Project.findOne({ 
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Update the task status and position
+    const taskIndex = project.tasks.findIndex(task => task.title === taskTitle);
+    if (taskIndex === -1) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Update task status
+    project.tasks[taskIndex].status = newStatus;
+
+    // If position is provided, handle reordering
+    if (typeof newPosition === 'number') {
+      const tasksInColumn = project.tasks.filter(t => t.status === newStatus);
+      tasksInColumn.sort((a, b) => a.position - b.position);
+      
+      // Remove task from old position
+      const task = project.tasks[taskIndex];
+      
+      // Update positions for tasks in the same column
+      project.tasks.forEach(t => {
+        if (t.status === newStatus && t.position >= newPosition) {
+          t.position += 1;
+        }
+      });
+      
+      // Set new position
+      task.position = newPosition;
+    }
+
+    await project.save();
+    res.json(project);
+  } catch (error) {
+    console.error('Update task error:', error);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+// Updated route handler for project renaming
+app.put('/api/projects/:id/rename', verifyToken, async (req, res) => {
+  try {
+    const { title } = req.body;
+    
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+
+    const project = await Project.findOneAndUpdate(
+      { 
+        _id: req.params.id,
+        userId: req.userId
+      },
+      { 
+        $set: { title: title.trim() }
+      },
+      { 
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.json(project);
+  } catch (error) {
+    console.error('Rename project error:', error);
+    res.status(500).json({ error: 'Failed to rename project' });
+  }
+});
+
 
 // Add this function to your backend code
 const validateAndFormatTaskPriority = (priority) => {

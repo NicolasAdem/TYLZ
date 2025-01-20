@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GripVertical, Lock } from 'lucide-react';
 
-// Core interfaces
+// Strongly typed interfaces
 interface Task {
   title: string;
   description: string;
@@ -20,11 +20,11 @@ interface Task {
 interface KanbanColumnProps {
   title: string;
   tasks: Task[];
-  status: 'pending' | 'in_progress' | 'completed';
-  onDragStart: (e: React.DragEvent, task: Task, status: string) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, dropIndex?: number) => void;
+  status: Task['status'];
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, task: Task, status: Task['status']) => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, dropIndex?: number) => void;
   allTasks: Task[];
 }
 
@@ -34,7 +34,7 @@ interface TooltipState {
   y: number;
 }
 
-// Task Graph system for managing dependencies
+// Task Graph implementation remains the same
 class TaskGraph {
   private tasks: Map<string, Task> = new Map();
   private dependencyGraph: Map<string, Set<string>> = new Map();
@@ -45,13 +45,11 @@ class TaskGraph {
   }
 
   private initializeGraph(tasks: Task[]) {
-    // Initialize tasks
     tasks.forEach(task => {
       this.tasks.set(task.title, task);
       this.dependencyGraph.set(task.title, new Set(task.dependencies));
     });
 
-    // Initialize unlocked tasks (those with no dependencies or completed dependencies)
     tasks.forEach(task => {
       if (this.canBeUnlocked(task.title)) {
         this.unlockedTasks.add(task.title);
@@ -63,10 +61,8 @@ class TaskGraph {
     const task = this.tasks.get(taskId);
     if (!task) return false;
 
-    // Task is unlocked if it has no dependencies
     if (!task.dependencies || task.dependencies.length === 0) return true;
 
-    // Task is unlocked if all dependencies are completed
     return task.dependencies.every(depId => {
       const depTask = this.tasks.get(depId);
       return depTask && depTask.status === 'completed';
@@ -77,14 +73,13 @@ class TaskGraph {
     return this.unlockedTasks.has(taskId);
   }
 
-  public updateTaskStatus(taskId: string, newStatus: string): void {
+  public updateTaskStatus(taskId: string, newStatus: Task['status']): void {
     const task = this.tasks.get(taskId);
     if (!task) return;
 
-    task.status = newStatus as 'pending' | 'in_progress' | 'completed';
+    task.status = newStatus;
     this.tasks.set(taskId, task);
 
-    // If task is completed, check if it unlocks any dependent tasks
     if (newStatus === 'completed') {
       this.updateDependentTasks(taskId);
     }
@@ -98,9 +93,9 @@ class TaskGraph {
     });
   }
 
-  public getDependencyInfo(taskId: string): { 
+  public getDependencyInfo(taskId: string): {
     isUnlocked: boolean;
-    remainingDependencies: string[] 
+    remainingDependencies: string[]
   } {
     const task = this.tasks.get(taskId);
     if (!task) return { isUnlocked: false, remainingDependencies: [] };
@@ -117,8 +112,7 @@ class TaskGraph {
   }
 }
 
-// Priority styles
-const getPriorityStyles = (priority: string): { bg: string; border: string; text: string } => {
+const getPriorityStyles = (priority: Task['priority']): { bg: string; border: string; text: string } => {
   const styles = {
     critical: {
       bg: 'bg-red-100 dark:bg-red-900',
@@ -139,15 +133,10 @@ const getPriorityStyles = (priority: string): { bg: string; border: string; text
       bg: 'bg-green-100 dark:bg-green-900',
       border: 'border-green-300 dark:border-green-700',
       text: 'text-green-800 dark:text-green-200'
-    },
-    default: {
-      bg: 'bg-gray-100 dark:bg-gray-800',
-      border: 'border-gray-300 dark:border-gray-700',
-      text: 'text-gray-800 dark:text-gray-200'
     }
   };
 
-  return styles[priority.toLowerCase() as keyof typeof styles] || styles.default;
+  return styles[priority];
 };
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
@@ -165,12 +154,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [unlockedTasks, setUnlockedTasks] = useState<Set<string>>(new Set());
 
-  // Update task graph and unlocked tasks when tasks change
   useEffect(() => {
     const newTaskGraph = new TaskGraph(allTasks);
     setTaskGraph(newTaskGraph);
     
-    // Update unlocked tasks set
     const newUnlockedTasks = new Set<string>();
     allTasks.forEach(task => {
       if (newTaskGraph.isTaskUnlocked(task.title)) {
@@ -181,51 +168,41 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   }, [allTasks]);
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, task: Task) => {
-    const isUnlocked = unlockedTasks.has(task.title);
-    if (!isUnlocked) {
+    if (!unlockedTasks.has(task.title)) {
       e.preventDefault();
       return;
     }
 
-    const dragData = {
+    onDragStart(e, task, status);
+    e.dataTransfer.setData('application/json', JSON.stringify({
       taskId: task.title,
       sourceStatus: status,
       taskData: task
-    };
-    
-    e.dataTransfer.setData('application/json', JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'move';
-    onDragStart(e, task, status);
+    }));
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
-    e.stopPropagation();
     setDraggedOverIndex(index);
     onDragOver(e);
-    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation();
     setDraggedOverIndex(null);
     onDragLeave(e);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
-    e.stopPropagation();
     
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
       if (!data || !data.taskId) return;
 
       if (unlockedTasks.has(data.taskId)) {
-        // Update the task graph with the new status
         taskGraph.updateTaskStatus(data.taskId, status);
         
-        // Update unlocked tasks based on the new state
         const newUnlockedTasks = new Set(unlockedTasks);
         allTasks.forEach(task => {
           if (taskGraph.isTaskUnlocked(task.title)) {
@@ -263,12 +240,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       `}
       onDragOver={(e) => {
         e.preventDefault();
-        e.stopPropagation();
         setDraggedOverIndex(-1);
       }}
       onDragLeave={(e) => {
         e.preventDefault();
-        e.stopPropagation();
         setDraggedOverIndex(null);
       }}
       onDrop={(e) => handleDrop(e, tasks.length)}

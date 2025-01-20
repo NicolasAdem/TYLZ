@@ -35,7 +35,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-, "src/server/auth-server.js", "src/app/components/SuccessAnimation.js", "src/app/components/NavMenu.js", "src/app/components/DashboardHeader.js"  ],
+, "src/server/auth-server.js", "src/app/components/SuccessAnimation.js", "src/app/components/NavMenu.js", "src/app/components/DashboardHeader.js", "src/app/components/VoiceIntegration.js"  ],
   "exclude": [
     "node_modules"
   ]

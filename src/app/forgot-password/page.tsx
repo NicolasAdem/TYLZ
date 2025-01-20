@@ -60,7 +60,7 @@ export default function ForgotPassword() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: light)').matches;
     setIsDarkMode(prefersDark);
   }, []);
 

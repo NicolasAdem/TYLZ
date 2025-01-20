@@ -13,7 +13,7 @@ const team: TeamMember[] = [
   {
     name: 'Nicolas Adem',
     role: 'Founder',
-    imageUrl: '/api/placeholder/400/400'
+    imageUrl: 'NicolasAdem.png'
   }
 ];
 
