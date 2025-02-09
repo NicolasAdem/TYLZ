@@ -35,7 +35,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-, "src/server/auth-server.js", "src/app/components/SuccessAnimation.js", "src/app/components/NavMenu.js", "src/app/components/DashboardHeader.js", "src/app/components/VoiceIntegration.js"  ],
+, "src/app/dashboard/backend/auth-server.js", "src/app/components/SuccessAnimation.tsx", "src/app/components/NavMenu.js", "src/app/components/DashboardHeader.js", "src/app/components/VoiceIntegration.js", "src/app/dashboard/gemini-server.js"],
   "exclude": [
     "node_modules"
   ]

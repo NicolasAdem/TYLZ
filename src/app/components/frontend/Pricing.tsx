@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { TextReveal } from './ui/TextReveal';
-import type { PricingPlan } from './types';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { TextReveal } from '../ui/TextReveal';
+import type { PricingPlan } from '../types';
 
 const plans: PricingPlan[] = [
   {

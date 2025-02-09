@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { TextReveal } from './ui/TextReveal';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { TextReveal } from '../ui/TextReveal';
 
 export const CallToAction = () => {
   return (

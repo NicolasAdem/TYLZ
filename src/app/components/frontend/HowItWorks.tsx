@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Brain, Rocket } from 'lucide-react';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { TextReveal } from './ui/TextReveal';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { TextReveal } from '../ui/TextReveal';
 
 const steps = [
   {

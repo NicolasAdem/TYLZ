@@ -1,12 +1,13 @@
-import React, { useState, useCallback } from 'react';
-import { KanbanColumn } from '../components/KanBanComponents';
-import type { Project, Task } from './types';
+import React, { useState, useCallback, useEffect } from 'react';
+import KanbanColumn from "./KanBanComponents"
+import type { Project, Task } from '../dashboard/types/project';
 
 interface ProjectDisplayProps {
   projects: Project[];
   selectedProjectId: string | null;
   onProjectsUpdate: (updatedProjects: Project[]) => void;
   handleDeleteProject: (projectId: string) => Promise<void>;
+  onProjectRename: (projectId: string, newTitle: string) => Promise<void>;
 }
 
 type TaskStatus = Task['status'];
@@ -20,9 +21,12 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   projects, 
   selectedProjectId, 
   onProjectsUpdate,
-  handleDeleteProject 
+  handleDeleteProject,
+  onProjectRename
 }) => {
   const [draggedItem, setDraggedItem] = useState<DraggedItem | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editedTitle, setEditedTitle] = useState('');
 
   const selectedProject = projects.find(p => p._id === selectedProjectId);
 
@@ -31,6 +35,38 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
     in_progress: tasks.filter(task => task.status === 'in_progress'),
     completed: tasks.filter(task => task.status === 'completed')
   }), []);
+
+  useEffect(() => {
+    const saveTimeout = setTimeout(() => {
+      if (selectedProject) {
+        onProjectsUpdate(projects);
+      }
+    }, 1000);
+
+    return () => clearTimeout(saveTimeout);
+  }, [selectedProject, projects, onProjectsUpdate]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedProject) {
+        onProjectsUpdate(projects);
+      }
+    };
+  }, []);
+
+  const handleProjectRename = async (projectId: string) => {
+    if (!editedTitle.trim()) {
+      setEditingProjectId(null);
+      return;
+    }
+
+    try {
+      await onProjectRename(projectId, editedTitle.trim());
+      setEditingProjectId(null);
+    } catch (error) {
+      console.error('Error renaming project:', error);
+    }
+  };
 
   if (!selectedProject) {
     return (
@@ -72,7 +108,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
     e.currentTarget.classList.remove('bg-gray-100');
   };
 
-  const handleDrop = (e: React.DragEvent, status: string) => {
+  const handleDrop = (e: React.DragEvent, dropIndex?: number) => {
     e.preventDefault();
     e.currentTarget.classList.remove('bg-gray-100');
     
@@ -80,11 +116,12 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
 
     const updatedProject = { ...selectedProject };
     const taskIndex = updatedProject.tasks.findIndex(t => t === draggedItem.task);
+    const newStatus = e.currentTarget.getAttribute('data-status') as TaskStatus;
     
-    if (taskIndex !== -1) {
+    if (taskIndex !== -1 && newStatus) {
       updatedProject.tasks[taskIndex] = {
         ...draggedItem.task,
-        status: status as TaskStatus
+        status: newStatus
       };
       
       onProjectsUpdate(projects.map(p => 
@@ -98,7 +135,29 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   return (
     <div className="h-full">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">{selectedProject.title}</h1>
+        {editingProjectId === selectedProject._id ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              className="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none"
+              autoFocus
+              onBlur={() => handleProjectRename(selectedProject._id)}
+              onKeyPress={(e) => e.key === 'Enter' && handleProjectRename(selectedProject._id)}
+            />
+          </div>
+        ) : (
+          <h1
+            className="text-3xl font-bold text-gray-900 cursor-pointer hover:text-blue-600"
+            onClick={() => {
+              setEditingProjectId(selectedProject._id);
+              setEditedTitle(selectedProject.title);
+            }}
+          >
+            {selectedProject.title}
+          </h1>
+        )}
         <p className="mt-2 text-gray-600">{selectedProject.description}</p>
       </div>
       
@@ -113,6 +172,8 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            allTasks={selectedProject.tasks}
+            data-status={column.status}
           />
         ))}
       </div>

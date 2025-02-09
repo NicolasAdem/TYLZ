@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Mail, Lock, UserCircle, Sun, Moon } from 'lucide-react';
 import { BackgroundGradient } from '../components/ui/BackgroundGradient';
 import { TextReveal } from '../components/ui/TextReveal';
 import SuccessAnimation from '../components/SuccessAnimation';
-import { Footer } from '../components/Footer';
+import { Footer } from '../components/frontend/Footer';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const MouseSpotlight = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -59,8 +60,10 @@ export default function Auth() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: light)').matches;
-    setIsDarkMode(prefersDark);
+    // Optional: You can still check for system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // But default to light mode
+    setIsDarkMode(false);
   }, []);
 
   const toggleDarkMode = () => {
@@ -94,7 +97,6 @@ export default function Auth() {
       setTimeout(() => window.location.href = '/dashboard', 2000);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'An error occurred');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -134,148 +136,199 @@ export default function Auth() {
         </div>
       </nav>
 
-      <main className="pt-32 pb-16 min-h-screen flex flex-col relative overflow-hidden">
-        <motion.div
-          className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-          animate={{ 
-            opacity: [0.4, 0.6, 0.4],
-            scale: [1, 1.1, 1],
-            x: [0, 20, 0],
-            y: [0, -30, 0]
-          }}
-          transition={{ 
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        
-        <motion.div
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-          animate={{ 
-            opacity: [0.4, 0.6, 0.4],
-            scale: [1, 1.2, 1],
-            x: [0, -20, 0],
-            y: [0, 20, 0]
-          }}
-          transition={{ 
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
+      <motion.div
+        className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+        animate={{ 
+          opacity: [0.4, 0.6, 0.4],
+          scale: [1, 1.1, 1],
+          x: [0, 20, 0],
+          y: [0, -30, 0]
+        }}
+        transition={{ 
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+      
+      <motion.div
+        className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+        animate={{ 
+          opacity: [0.4, 0.6, 0.4],
+          scale: [1, 1.2, 1],
+          x: [0, -20, 0],
+          y: [0, 20, 0]
+        }}
+        transition={{ 
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1
+        }}
+      />
 
-        <div className="container mx-auto px-6 flex-grow">
-          <div className="max-w-md mx-auto">
-            <TextReveal>
-              <h1 className={`text-4xl font-bold text-center mb-8 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                {isLogin ? 'Welcome Back' : 'Create Account'}
-              </h1>
-            </TextReveal>
+      <main className="min-h-screen flex relative pt-16">
+        {/* Image Section */}
+        <div className="hidden md:block w-1/2 relative overflow-hidden">
+          <motion.div
+            key={isLogin ? 'login' : 'signup'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0"
+          >
+            <div className="relative w-full h-full">
+              <Image 
+                src={isLogin ? '/Login.png' : '/Signup.png'} 
+                alt={isLogin ? 'Login Background' : 'Signup Background'}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-white text-center px-8"
+                >
+                  <h2 className="text-3xl font-bold mb-4">
+                    {isLogin 
+                      ? "Welcome Back! Continue Your Journey" 
+                      : "Start Your Adventure with Us"
+                    }
+                  </h2>
+                  <p className="text-xl opacity-80">
+                    {isLogin 
+                      ? "Seamlessly access your personalized dashboard" 
+                      : "Create an account and unlock new possibilities"
+                    }
+                  </p>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
-            <BackgroundGradient>
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-8 space-y-8`}>
-                <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
-                  <motion.button 
-                    onClick={() => setIsLogin(true)}
-                    className={`flex-1 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${
-                      isLogin ? 'bg-blue-600 text-white' : 'text-gray-700'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Log In
-                  </motion.button>
-                  <motion.button 
-                    onClick={() => setIsLogin(false)}
-                    className={`flex-1 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${
-                      !isLogin ? 'bg-blue-600 text-white' : 'text-gray-700'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Sign Up
-                  </motion.button>
-                </div>
+        <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12 bg-gray-50 dark:bg-gray-900">
+          <AnimatePresence mode="wait">
+            {!successMessage ? (
+              <motion.div 
+                key="form"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full max-w-md"
+              >
+                <TextReveal>
+                  <h1 className={`text-4xl font-bold text-center mb-8 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                    {isLogin ? 'Welcome Back' : 'Create Account'}
+                  </h1>
+                </TextReveal>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {!isLogin && (
-                    <div className="relative">
-                      <label htmlFor="signup-name" className={`block text-sm font-medium mb-2 ${
-                        isDarkMode ? 'text-gray-200' : 'text-gray-700'
-                      }`}>
-                        Full Name
-                      </label>
+                <BackgroundGradient>
+                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-8 space-y-8`}>
+                    <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
+                      <motion.button 
+                        onClick={() => setIsLogin(true)}
+                        className={`flex-1 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${
+                          isLogin ? 'bg-blue-600 text-white' : 'text-gray-700'
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Log In
+                      </motion.button>
+                      <motion.button 
+                        onClick={() => setIsLogin(false)}
+                        className={`flex-1 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${
+                          !isLogin ? 'bg-blue-600 text-white' : 'text-gray-700'
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Sign Up
+                      </motion.button>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      {!isLogin && (
+                        <div className="relative">
+                          <label htmlFor="signup-name" className={`block text-sm font-medium mb-2 ${
+                            isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                          }`}>
+                            Full Name
+                          </label>
+                          <div className="relative">
+                            <UserCircle className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+                              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                            } w-6 h-6`} />
+                            <input
+                              type="text"
+                              id="signup-name"
+                              name="name"
+                              required
+                              className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
+                                isDarkMode 
+                                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                              }`}
+                              placeholder="John Doe"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="relative">
-                        <UserCircle className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        } w-6 h-6`} />
-                        <input
-                          type="text"
-                          id="signup-name"
-                          name="name"
-                          required
-                          className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
-                            isDarkMode 
-                              ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                          }`}
-                          placeholder="John Doe"
-                        />
+                        <label htmlFor="email" className={`block text-sm font-medium mb-2 ${
+                          isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                        }`}>
+                          Email
+                        </label>
+                        <div className="relative">
+                          <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          } w-6 h-6`} />
+                          <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            required
+                            className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
+                              isDarkMode 
+                                ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                            }`}
+                            placeholder="your@email.com"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
 
-                  <div className="relative">
-                    <label htmlFor="email" className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? 'text-gray-200' : 'text-gray-700'
-                    }`}>
-                      Email
-                    </label>
-                    <div className="relative">
-                      <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      } w-6 h-6`} />
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        required
-                        className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                        }`}
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="password" className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? 'text-gray-200' : 'text-gray-700'
-                    }`}>
-                      Password
-                    </label>
-                    <div className="relative">
-                      <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      } w-6 h-6`} />
-                      <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        required
-                        pattern={!isLogin ? "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$" : undefined}
-                        className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                        }`}
-                        placeholder="••••••••"
-                      />
-                    </div>
+                      <div className="relative">
+                        <label htmlFor="password" className={`block text-sm font-medium mb-2 ${
+                          isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                        }`}>
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          } w-6 h-6`} />
+                          <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            pattern={!isLogin ? "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$" : undefined}
+                            className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors ${
+                              isDarkMode 
+                                ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                            }`}
+                            placeholder="••••••••"
+                          />
+                        </div>
                     {!isLogin && (
                       <p className={`mt-2 text-sm ${
                         isDarkMode ? 'text-gray-400' : 'text-gray-600'
@@ -364,18 +417,22 @@ export default function Auth() {
                 )}
               </div>
             </BackgroundGradient>
-
-            <div className={`mt-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
-              <p>By continuing, you agree to our</p>
-              <div className="space-x-4 mt-2">
-                <a href="#" className="text-blue-600 hover:text-blue-800">Privacy Policy</a>
-                <a href="#" className="text-blue-600 hover:text-blue-800">Terms of Service</a>
-              </div>
-            </div>
-          </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full max-w-md"
+              >
+                <SuccessAnimation isLogin={isLogin} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
-      <Footer />
+      <Footer isDarkMode={isDarkMode} />
     </div>
   );
 }

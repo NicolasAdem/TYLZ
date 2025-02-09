@@ -5,18 +5,34 @@ const User = require('./models/User');
 
 const router = express.Router();
 
+
 const verifyToken = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+    // Check if Authorization header exists
+    if (!req.headers.authorization) {
+      return res.status(401).json({ error: 'No authorization header' });
     }
+
+    // Split header and check for Bearer token
+    const parts = req.headers.authorization.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+      return res.status(401).json({ error: 'Invalid authorization format' });
+    }
+
+    const token = parts[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
+    req.user = { 
+      email: decoded.email, 
+      username: decoded.username,
+      name: decoded.name 
+    };
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired. Please log in again.' });
+    }
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
@@ -140,6 +156,59 @@ router.post('/login', async (req, res) => {
 // Optional: Password reset route
 router.post('/reset-password', async (req, res) => {
   // Add password reset functionality if needed
+});
+
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Input validation
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'All fields are required',
+        fields: {
+          email: !email ? 'Email is required' : null,
+          password: !password ? 'Password is required' : null
+        }
+      });
+    }
+
+    // Find user and handle errors
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Create token with more robust payload
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ 
+      token,
+      message: 'Login successful',
+      user: {
+        name: user.name,
+        email: user.email,
+        id: user._id
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Server error. Please try again later.' });
+  }
 });
 
 module.exports = { router, verifyToken };

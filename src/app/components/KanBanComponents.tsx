@@ -113,7 +113,7 @@ class TaskGraph {
 }
 
 const getPriorityStyles = (priority: Task['priority']): { bg: string; border: string; text: string } => {
-  const styles = {
+  const styles: Record<Task['priority'], { bg: string; border: string; text: string }> = {
     critical: {
       bg: 'bg-red-100 dark:bg-red-900',
       border: 'border-red-300 dark:border-red-700',
@@ -136,7 +136,11 @@ const getPriorityStyles = (priority: Task['priority']): { bg: string; border: st
     }
   };
 
-  return styles[priority];
+  return styles[priority] || {
+    bg: 'bg-gray-100 dark:bg-gray-900',
+    border: 'border-gray-300 dark:border-gray-700',
+    text: 'text-gray-800 dark:text-gray-200'
+  };
 };
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
@@ -150,14 +154,12 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   allTasks,
 }) => {
   const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
-  const [taskGraph, setTaskGraph] = useState(() => new TaskGraph(allTasks));
+  const [taskGraph] = useState(() => new TaskGraph(allTasks));
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [unlockedTasks, setUnlockedTasks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const newTaskGraph = new TaskGraph(allTasks);
-    setTaskGraph(newTaskGraph);
-    
     const newUnlockedTasks = new Set<string>();
     allTasks.forEach(task => {
       if (newTaskGraph.isTaskUnlocked(task.title)) {
@@ -250,7 +252,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
     >
       <h3 className="font-semibold mb-4 text-gray-700 dark:text-gray-200 text-lg">{title}</h3>
       <div className="space-y-4">
-        {tasks.map((task, index) => {
+        {tasks?.map((task, index) => {
+          if (!task) return null; // Skip if task is undefined
           const styles = getPriorityStyles(task.priority);
           const isBeingDraggedOver = draggedOverIndex === index;
           const isUnlocked = unlockedTasks.has(task.title);

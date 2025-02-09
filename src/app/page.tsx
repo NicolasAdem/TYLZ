@@ -1,15 +1,15 @@
 'use client'
 
 import React from 'react';
-import { Navigation } from './components/Navigation';
-import { Hero } from './components/Hero';
-import { Features } from './components/Features';
-import { HowItWorks } from './components/HowItWorks';
-import { Pricing } from './components/Pricing';
-import { Testimonials } from './components/Testimonials';
-import { Team } from './components/Team';
-import { CallToAction } from './components/CallToAction';
-import { Footer } from './components/Footer';
+import { Navigation } from './components/frontend/Navigation';
+import { Hero } from './components/frontend/Hero';
+import { Features } from './components/frontend/Features';
+import { HowItWorks } from './components/frontend/HowItWorks';
+import { Pricing } from './components/frontend/Pricing';
+import { Testimonials } from './components/frontend/Testimonials';
+import { Team } from './components/frontend/Team';
+import { CallToAction } from './components/frontend/CallToAction';
+import { Footer } from './components/frontend/Footer';
 
 const Home = () => {
   return (
@@ -24,7 +24,7 @@ const Home = () => {
         <Team />
         <CallToAction />
       </main>
-      <Footer />
+      <Footer isDarkMode={false} />
     </div>
   );
 };

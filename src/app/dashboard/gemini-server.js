@@ -1,21 +1,18 @@
+// gemini-server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { router: authRouter, verifyToken } = require('./auth');
+const { User, Project, Invite } = require('./models/schemas');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body);
-  next();
-});
-
+// Middleware setup
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true,
@@ -30,313 +27,39 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/saas-plat
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-app.put('/api/projects/:id/tasks', verifyToken, async (req, res) => {
-  try {
-    const { taskTitle, newStatus } = req.body;
-    const project = await Project.findOne({ 
-      _id: req.params.id,
-      userId: req.userId
-    });
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    // Update the task status
-    project.tasks = project.tasks.map(task => 
-      task.title === taskTitle
-        ? { ...task, status: newStatus }
-        : task
-    );
-
-    await project.save();
-    res.json(project);
-  } catch (error) {
-    console.error('Update task error:', error);
-    res.status(500).json({ error: 'Failed to update task' });
-  }
-});
-
-const taskSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  duration: {
-    value: Number,
-    unit: String
-  },
-  assigned_to: String,
-  dependencies: [String],
-  priority: String,
-  status: String,
-  category: String,
-  complexity: String,
-  position: Number, // Add position field for ordering
-  subtasks: [{
-    description: String,
-    duration: {
-      value: Number,
-      unit: String
-    }
-  }]
-});
-
-const projectSchema = new mongoose.Schema({
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'User'
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  description: String,
-  project_size: String,
-  tasks: [taskSchema],
-  total_duration: {
-    minutes: Number,
-    hours: Number,
-    days: Number
-  },
-  deadline_date: String,
-  deadline_days: {
-    type: Number,
-    required: true,
-    default: 7
-  },
-  recommended_team_size: Number,
-  created_at: { type: Date, default: Date.now },
-  status: String
-});
-
-const Project = mongoose.model('Project', projectSchema);
-
-
-// Updated route handler for task updates
-app.put('/api/projects/:id/tasks', verifyToken, async (req, res) => {
-  try {
-    const { taskTitle, newStatus, newPosition } = req.body;
-    
-    // Find project and verify ownership
-    const project = await Project.findOne({ 
-      _id: req.params.id,
-      userId: req.userId
-    });
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    // Update the task status and position
-    const taskIndex = project.tasks.findIndex(task => task.title === taskTitle);
-    if (taskIndex === -1) {
-      return res.status(404).json({ error: 'Task not found' });
-    }
-
-    // Update task status
-    project.tasks[taskIndex].status = newStatus;
-
-    // If position is provided, handle reordering
-    if (typeof newPosition === 'number') {
-      const tasksInColumn = project.tasks.filter(t => t.status === newStatus);
-      tasksInColumn.sort((a, b) => a.position - b.position);
-      
-      // Remove task from old position
-      const task = project.tasks[taskIndex];
-      
-      // Update positions for tasks in the same column
-      project.tasks.forEach(t => {
-        if (t.status === newStatus && t.position >= newPosition) {
-          t.position += 1;
-        }
-      });
-      
-      // Set new position
-      task.position = newPosition;
-    }
-
-    await project.save();
-    res.json(project);
-  } catch (error) {
-    console.error('Update task error:', error);
-    res.status(500).json({ error: 'Failed to update task' });
-  }
-});
-
-// Updated route handler for project renaming
-app.put('/api/projects/:id/rename', verifyToken, async (req, res) => {
-  try {
-    const { title } = req.body;
-    
-    if (!title || !title.trim()) {
-      return res.status(400).json({ error: 'Title cannot be empty' });
-    }
-
-    const project = await Project.findOneAndUpdate(
-      { 
-        _id: req.params.id,
-        userId: req.userId
-      },
-      { 
-        $set: { title: title.trim() }
-      },
-      { 
-        new: true,
-        runValidators: true
-      }
-    );
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    res.json(project);
-  } catch (error) {
-    console.error('Rename project error:', error);
-    res.status(500).json({ error: 'Failed to rename project' });
-  }
-});
-
-
-// Add this function to your backend code
-const validateAndFormatTaskPriority = (priority) => {
-  const validPriorities = ['critical', 'high', 'medium', 'low', 'very low'];
-  const normalizedPriority = priority.toLowerCase();
-  return validPriorities.includes(normalizedPriority) ? normalizedPriority : 'medium';
-};
-
-const formatAIResponse = (aiResponse) => {
-  try {
-    let data = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
-    
-    // Calculate deadline_date based on deadline_days
-    const deadlineDate = new Date();
-    deadlineDate.setDate(deadlineDate.getDate() + (data.deadline_days || 7));
-    
-    // Ensure all required fields exist
-    const formattedData = {
-      title: data.title || 'Untitled Project',
-      description: data.description || '',
-      deadline_days: data.deadline_days || 7,
-      deadline_date: deadlineDate.toISOString(), // Add deadline_date
-      status: 'active',
-      tasks: Array.isArray(data.tasks) ? data.tasks : []
-    };
-
-    // Format and validate each task
-    formattedData.tasks = formattedData.tasks.map(task => ({
-      title: task.title || 'Untitled Task',
-      description: task.description || '',
-      duration: {
-        value: task.duration?.value || 1,
-        unit: ['minutes', 'hours', 'days', 'weeks', 'months', 'years'].includes(task.duration?.unit) 
-          ? task.duration.unit 
-          : 'days'
-      },
-      assigned_to: task.assigned_to || 'Unassigned',
-      dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
-      priority: validateAndFormatTaskPriority(task.priority || 'medium'),
-      status: task.status || 'pending',
-      parallel_possible: Boolean(task.parallel_possible)
-    }));
-
-    // Sort tasks by priority
-    const priorityOrder = {
-      'critical': 0,
-      'high': 1,
-      'medium': 2,
-      'low': 3,
-      'very low': 4
-    };
-
-    formattedData.tasks.sort((a, b) => 
-      priorityOrder[a.priority] - priorityOrder[b.priority]
-    );
-
-    return formattedData;
-  } catch (error) {
-    throw new Error(`Failed to format AI response: ${error.message}`);
-  }
-};
-
 // Gemini AI setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Utility Functions
 const generateProjectPlan = async (description, deadline) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
     const prompt = `You are an expert project management consultant. Create a project plan for: ${description}
-    Project deadline: ${deadline.value} ${deadline.unit}
-    
-    Respond ONLY with a JSON object in this exact format, with no additional text like "JSON object" or explanation:
-    {
-      "title": "string",
-      "description": "string",
-      "deadline_days": number,
-      "tasks": [
-        {
-          "title": "string",
-          "description": "string",
-          "duration": {
-            "value": number,
-            "unit": "minutes" | "hours" | "days" | "weeks" | "months" | "years"
-          },
-          "assigned_to": "string",
-          "dependencies": ["string"],
-          "priority": "critical" | "high" | "medium" | "low" | "very low",
-          "status": "pending",
-          "parallel_possible": boolean
-        }
-      ],
-      "status": "active"
-    }`;
+    Project deadline: ${deadline.value} ${deadline.unit}...`; // Your existing prompt
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let cleanedResponse = response.text()
-      // Remove code blocks
       .replace(/```json|```/g, '')
-      // Remove "JSON" prefix if it exists
       .replace(/^JSON\s*/, '')
-      // Remove any leading/trailing whitespace
       .trim();
 
-    // If the response starts with a { character, assume it's JSON
-    if (!cleanedResponse.startsWith('{')) {
-      // Try to find the first { character
-      const jsonStart = cleanedResponse.indexOf('{');
-      if (jsonStart !== -1) {
-        cleanedResponse = cleanedResponse.slice(jsonStart);
-      }
-    }
-
-    // Try to find the last } character
-    const jsonEnd = cleanedResponse.lastIndexOf('}');
-    if (jsonEnd !== -1) {
-      cleanedResponse = cleanedResponse.slice(0, jsonEnd + 1);
-    }
-
-    console.log('Cleaned response:', cleanedResponse); // Debug log
-
-    // Parse and validate the response
-    const formattedResponse = formatAIResponse(cleanedResponse);
-    return formattedResponse;
-
+    return formatAIResponse(cleanedResponse);
   } catch (error) {
-    console.error('Full error:', error);
-    if (error.message.includes('Unexpected token')) {
-      console.error('Raw AI response:', error.response);
-      throw new Error('AI response was not in the correct JSON format. Please try again.');
-    }
+    console.error('Generation error:', error);
     throw new Error('Failed to generate project plan: ' + error.message);
   }
 };
 
-// Project routes
+// Routes
 app.get('/api/projects', verifyToken, async (req, res) => {
   try {
-    const projects = await Project.find({ userId: req.userId });
+    const projects = await Project.find({
+      $or: [
+        { userId: req.userId },
+        { 'collaborators.userId': req.userId }
+      ]
+    });
     res.json(projects);
   } catch (error) {
     console.error('Fetch projects error:', error);
@@ -344,10 +67,24 @@ app.get('/api/projects', verifyToken, async (req, res) => {
   }
 });
 
+app.get('/api/invites/pending', verifyToken, async (req, res) => {
+  try {
+    const invites = await Invite.find({
+      email: req.user.email,
+      status: 'pending',
+      expiresAt: { $gt: new Date() }
+    }).populate('projectId', 'title description');
+
+    // Return empty array if no invites found
+    res.json(invites || []);
+  } catch (error) {
+    console.error('Fetch invites error:', error);
+    res.status(500).json({ error: 'Failed to fetch invitations' });
+  }
+});
+
 app.post('/api/generate-plan', verifyToken, async (req, res) => {
   try {
-    console.log('Received request:', req.body);
-
     if (!req.body.description || !req.body.deadline) {
       return res.status(400).json({ 
         error: 'Missing required fields',
@@ -355,31 +92,16 @@ app.post('/api/generate-plan', verifyToken, async (req, res) => {
       });
     }
 
-    let plan;
-    try {
-      plan = await generateProjectPlan(req.body.description, req.body.deadline);
-    } catch (genError) {
-      console.error('Generation error:', genError);
-      return res.status(500).json({ 
-        error: 'AI Plan Generation Failed',
-        details: genError.message,
-        suggestion: 'Please try again with a different description'
-      });
-    }
-    
+    const plan = await generateProjectPlan(req.body.description, req.body.deadline);
     const projectData = {
       ...plan,
       userId: req.userId,
       status: 'active',
-      created_at: new Date(),
-      deadline_days: plan.deadline_days || 7
+      created_at: new Date()
     };
 
     const project = new Project(projectData);
     const savedProject = await project.save();
-    
-    console.log('Saved project:', savedProject);
-    
     res.json(savedProject);
   } catch (error) {
     console.error('API endpoint error:', error);
@@ -387,6 +109,42 @@ app.post('/api/generate-plan', verifyToken, async (req, res) => {
       error: 'Server Error',
       details: error.message 
     });
+  }
+});
+
+app.put('/api/projects/:id/tasks', verifyToken, async (req, res) => {
+  try {
+    const { taskTitle, newStatus, newPosition } = req.body;
+    const project = await Project.findOne({ 
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const taskIndex = project.tasks.findIndex(task => task.title === taskTitle);
+    if (taskIndex === -1) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    project.tasks[taskIndex].status = newStatus;
+
+    if (typeof newPosition === 'number') {
+      project.tasks.forEach(t => {
+        if (t.status === newStatus && t.position >= newPosition) {
+          t.position += 1;
+        }
+      });
+      project.tasks[taskIndex].position = newPosition;
+    }
+
+    await project.save();
+    res.json(project);
+  } catch (error) {
+    console.error('Update task error:', error);
+    res.status(500).json({ error: 'Failed to update task' });
   }
 });
 

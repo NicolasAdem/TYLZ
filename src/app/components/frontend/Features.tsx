@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Brain, BarChart, ArrowRight, FileText, Globe, Shield } from 'lucide-react';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { TextReveal } from './ui/TextReveal';
-import type { Feature } from './types';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { TextReveal } from '../ui/TextReveal';
+import type { Feature } from '../types';
 
 const features: Feature[] = [
   {

@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, Quote } from 'lucide-react';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { TextReveal } from './ui/TextReveal';
-import type { Testimonial } from './types';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { TextReveal } from '../ui/TextReveal';
+import type { Testimonial } from '../types';
 
 const testimonials: Testimonial[] = [
   {

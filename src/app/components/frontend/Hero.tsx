@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
-import { BackgroundGradient } from './ui/BackgroundGradient';
-import { AnimatedCounter } from './ui/AnimatedCounter';
-import { RotatingText } from './ui/RotatingText';
+import { BackgroundGradient } from '../ui/BackgroundGradient';
+import { AnimatedCounter } from '../ui/AnimatedCounter';
+import { RotatingText } from '../ui/RotatingText';
 // Enhanced MouseSpotlight Component
 const MouseSpotlight = () => {
   const [position, setPosition] = React.useState({ x: 0, y: 0 });

@@ -6,7 +6,7 @@ import { ArrowRight, Mail, ChevronLeft, Sun, Moon } from 'lucide-react';
 import { BackgroundGradient } from '../components/ui/BackgroundGradient';
 import { TextReveal } from '../components/ui/TextReveal';
 import SuccessAnimation from '../components/SuccessAnimation';
-import { Footer } from '../components/Footer';
+import { Footer } from '../components/frontend/Footer';
 import Link from 'next/link';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -296,7 +296,7 @@ export default function ForgotPassword() {
           </div>
         </div>
       </main>
-      <Footer />
+      <Footer isDarkMode={isDarkMode} />
     </div>
   );
 }

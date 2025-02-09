@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Linkedin, Twitter } from 'lucide-react';
-import { TextReveal } from './ui/TextReveal';
-import type { TeamMember } from './types';
+import { TextReveal } from '../ui/TextReveal';
+import type { TeamMember } from '../types';
 
 const team: TeamMember[] = [
   {
